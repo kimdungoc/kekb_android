@@ -3,6 +3,7 @@ package com.starboard.asia.kek
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +15,10 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.Group
+import androidx.webkit.TracingConfig.CATEGORIES_WEB_DEVELOPER
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
+import org.chromium.support_lib_boundary.util.Features.MULTI_PROCESS_QUERY
 
 class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnTouchListener {
 
@@ -52,6 +57,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnTouchList
         // ---- Setting WebView ----
         webView.settings.apply {
             javaScriptEnabled = true
+            domStorageEnabled = true
         }
 
         webView.webViewClient = KekWebViewClient()
@@ -68,6 +74,17 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnTouchList
         }
         
         Log.d(TAG, "userAgentString: ${webView.settings.userAgentString}")
+
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROCESS)) {
+            Log.d(TAG, "isMultiProcessEnabled: " +  WebViewCompat.isMultiProcessEnabled())
+        }
+
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.START_SAFE_BROWSING)) {
+            WebViewCompat.startSafeBrowsing(this.applicationContext) { value ->
+                Log.d(TAG, "WebViewCompat.startSafeBrowsing: $value")
+            }
+        }
+        WebView.setWebContentsDebuggingEnabled(true);
     }
 
     /// If user didn't interact with WebView within 3 minutes,
@@ -96,6 +113,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnTouchList
         stopTimer()
         super.onDestroy()
     }
+
     /// WebView touch event.
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(v: View?, motionEvent: MotionEvent?): Boolean {
@@ -117,6 +135,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnTouchList
 
     /// WebViewClient class.
     private inner class KekWebViewClient : WebViewClient() {
+        override fun onPageCommitVisible(view: WebView, url: String) {
+            super.onPageCommitVisible(view, url)
+            Log.d(TAG, "onPageCommitVisible: $url")
+        }
+
         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
             Log.d(TAG,"onPageStarted: $url")
@@ -143,6 +166,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnTouchList
             super.onReceivedError(view, request, error)
             Log.d(TAG,"onReceivedError: $error")
         }
+
+        override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+            super.doUpdateVisitedHistory(view, url, isReload)
+            Log.d(TAG, "doUpdateVisitedHistory: ${webView.url}")
+        }
+
 
         override fun shouldOverrideUrlLoading(
             view: WebView?,
@@ -177,7 +206,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnTouchList
     }
 
     companion object {
-        private const val KEK_URL = "https://my.matterport.com/show/?m=UUwYUiCdfTa"
+        public const val KEK_URL = "https://my.matterport.com/show/?m=UUwYUiCdfTa"
         private const val LIMIT_INTERACT_MILLI: Long = 180000 // 3 minutes
         private const val TAG = "KEKB"
     }
